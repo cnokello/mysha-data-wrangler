@@ -6,7 +6,7 @@ public class Disease implements Serializable {
 
   private static final long serialVersionUID = 1L;
 
-  private Long id;
+  private String id;
 
   private String class0;
 
@@ -18,11 +18,13 @@ public class Disease implements Serializable {
 
   private String description;
 
+  private String type;
+
   public Disease() {
   }
 
-  public Disease(Long id, String class0, String class1, String class2, String name,
-      String description) {
+  public Disease(String id, String class0, String class1, String class2, String name,
+      String description, String type) {
     super();
     this.id = id;
     this.class0 = class0;
@@ -30,6 +32,7 @@ public class Disease implements Serializable {
     this.class2 = class2;
     this.name = name;
     this.description = description;
+    this.type = type;
   }
 
   public Disease(String class0, String class1, String class2, String name, String description) {
@@ -47,11 +50,11 @@ public class Disease implements Serializable {
         + ", name=" + name + ", description=" + description + "]";
   }
 
-  public Long getId() {
+  public String getId() {
     return id;
   }
 
-  public void setId(Long id) {
+  public void setId(String id) {
     this.id = id;
   }
 
@@ -93,6 +96,14 @@ public class Disease implements Serializable {
 
   public void setDescription(String description) {
     this.description = description;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 
 }

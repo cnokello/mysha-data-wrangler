@@ -1,15 +1,20 @@
 package com.mysha.wrangler.service;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.google.gson.Gson;
 import com.mysha.wrangler.model.Disease;
 
 @Service(value = "treeFileWrangler")
@@ -52,6 +57,13 @@ public class TreeFileWrangler implements Processor {
 
   private String name;
 
+  private @Autowired
+  KafkaCommService kafkaCommService;
+
+  private static final String TYPE_DISEASE = "DISEASE";
+
+  private Gson gson = new Gson();
+
   public synchronized void process(final Exchange exchange) throws Exception {
 
     try {
@@ -60,25 +72,29 @@ public class TreeFileWrangler implements Processor {
       if (line != null && line.trim().startsWith(CLASS0_REGEX)) {
         class0 = line.replaceAll(CLASS0_PATTERN, "");
 
-        // LOGGER.info("\n\nCLASS 0: " + line);
+        LOGGER.info("\n\nCLASS 0: " + line);
 
       } else if (line != null && line.startsWith(CLASS1_REGEX)) {
         class1 = line.replaceAll(CLASS1_PATTERN, "");
 
-        // LOGGER.info("\n\nCLASS 1: " + line);
+        LOGGER.info("\n\nCLASS 1: " + line);
 
       } else if (line != null && line.startsWith(CLASS2_REGEX)) {
         class2 = line.replaceAll(CLASS2_PATTERN, "");
 
-        // LOGGER.info("\n\nCLASS 2: " + line);
+        LOGGER.info("\n\nCLASS 2: " + line);
 
       } else if (line != null && line.startsWith(NAME_REGEX)) {
         name = line.replaceAll(NAME_PATTERN, "");
-        final Disease d = new Disease(new java.util.Date().getTime(), class0, class1, class2, name,
-            "");
+        String id = UUID.randomUUID().toString();
+        final Disease d = new Disease(id, class0, class1, class2, name, "", TYPE_DISEASE);
+        String dJson = new Gson().toJson(d);
+
+        Map<String, Object> msg = new HashMap<String, Object>();
+        kafkaCommService.send(id, gson.fromJson(dJson, msg.getClass()));
 
         FileUtils.writeStringToFile(new File(tmpDir + "/diseases.log"), name + "\n", true);
-        LOGGER.info("\n\nDISEASE: " + d.toString());
+        LOGGER.info("\n\nDISEASE: " + dJson);
 
       }
 

@@ -8,8 +8,10 @@ public class FileProcessingPipeline extends RouteBuilder {
   public void configure() throws Exception {
 
     // Delimited file processing pipeline
-    from("file:{{files.basedir.delimited}}?preMove=inprogress&move=.processed").split()
-        .tokenize("\n").to("bean:delimitedFileWrangler");
+    from("file:{{files.basedir.delimited}}?preMove=inprogress&move=.processed")
+        .onException(Exception.class).handled(true).to("bean:pipelineExceptionHandler").end()
+        .convertBodyTo(byte[].class, "utf-8").split().tokenize("\n", 1).streaming()
+        .convertBodyTo(String.class).to("bean:delimitedFileWrangler");
 
     // XML file processing pipeline
     from("file:{{files.basedir.xml}}?preMove=inprogress&move=.processed").split()
