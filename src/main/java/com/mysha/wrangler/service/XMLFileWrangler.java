@@ -26,7 +26,7 @@ import com.thoughtworks.xstream.mapper.MapperWrapper;
 @Service(value = "xmlFileWrangler")
 public class XMLFileWrangler implements Processor {
 
-  private Logger LOGGER = Logger.getLogger(DelimitedFileWrangler.class);
+  private static final Logger LOGGER = Logger.getLogger(XMLFileWrangler.class);
 
   private ObjectMapper objectMapper = new ObjectMapper();
 
