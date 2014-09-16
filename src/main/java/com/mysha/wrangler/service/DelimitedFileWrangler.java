@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
- * This class processes tab delimited file and publishes to Kafka for further processing
+ * This class processes delimited files and publishes to Kafka for further processing
  * 
  * @author nelson.okello
  * 

@@ -16,7 +16,15 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.mysha.wrangler.model.Disease;
+import com.mysha.wrangler.model.DrugClass;
+import com.mysha.wrangler.util.CfgUtil;
 
+/**
+ * Publishes tree-structured files and publishes to Kafka
+ * 
+ * @author nelson.okello
+ * 
+ */
 @Service(value = "treeFileWrangler")
 public class TreeFileWrangler implements Processor {
 
@@ -24,30 +32,6 @@ public class TreeFileWrangler implements Processor {
 
   private @Value("${tmp.basedir}")
   String tmpDir;
-
-  private @Value("${regex.class0}")
-  String CLASS0_REGEX;
-
-  private @Value("${regex.class1}")
-  String CLASS1_REGEX;
-
-  private @Value("${regex.class2}")
-  String CLASS2_REGEX;
-
-  private @Value("${regex.name}")
-  String NAME_REGEX;
-
-  private @Value("${pattern.class0}")
-  String CLASS0_PATTERN;
-
-  private @Value("${pattern.class1}")
-  String CLASS1_PATTERN;
-
-  private @Value("${pattern.class2}")
-  String CLASS2_PATTERN;
-
-  private @Value("${pattern.name}")
-  String NAME_PATTERN;
 
   private String class0;
 
@@ -62,39 +46,28 @@ public class TreeFileWrangler implements Processor {
 
   private static final String TYPE_DISEASE = "DISEASE";
 
+  private static final String TYPE_DRUG = "DRUG";
+
+  private static final String TOPIC_DRUG = "DRUG_CLASS";
+
   private Gson gson = new Gson();
 
+  private @Autowired
+  CfgUtil cfg;
+
+  /**
+   * Processing entry point
+   */
   public synchronized void process(final Exchange exchange) throws Exception {
 
     try {
       final String line = exchange.getIn().getBody(String.class);
+      final String fileName = exchange.getIn().getHeader(Exchange.FILE_NAME_ONLY, String.class);
+      if (fileName.toUpperCase().contains(TYPE_DISEASE)) {
+        wrangleDisease(line);
 
-      if (line != null && line.trim().startsWith(CLASS0_REGEX)) {
-        class0 = line.replaceAll(CLASS0_PATTERN, "");
-
-        LOGGER.info("\n\nCLASS 0: " + line);
-
-      } else if (line != null && line.startsWith(CLASS1_REGEX)) {
-        class1 = line.replaceAll(CLASS1_PATTERN, "");
-
-        LOGGER.info("\n\nCLASS 1: " + line);
-
-      } else if (line != null && line.startsWith(CLASS2_REGEX)) {
-        class2 = line.replaceAll(CLASS2_PATTERN, "");
-
-        LOGGER.info("\n\nCLASS 2: " + line);
-
-      } else if (line != null && line.startsWith(NAME_REGEX)) {
-        name = line.replaceAll(NAME_PATTERN, "");
-        String id = UUID.randomUUID().toString();
-        final Disease d = new Disease(id, class0, class1, class2, name, "", TYPE_DISEASE);
-        String dJson = new Gson().toJson(d);
-
-        Map<String, Object> msg = new HashMap<String, Object>();
-        kafkaCommService.send(id, gson.fromJson(dJson, msg.getClass()));
-
-        FileUtils.writeStringToFile(new File(tmpDir + "/diseases.log"), name + "\n", true);
-        LOGGER.info("\n\nDISEASE: " + dJson);
+      } else if (fileName.toUpperCase().contains(TYPE_DRUG)) {
+        wrangleDrug(line);
 
       }
 
@@ -105,5 +78,79 @@ public class TreeFileWrangler implements Processor {
               true);
     }
 
+  }
+
+  /**
+   * Wrangles disease data
+   * 
+   * @param line
+   * @throws Exception
+   */
+  public void wrangleDisease(final String line) throws Exception {
+    if (line != null && line.trim().startsWith(cfg.getEnv().getProperty("disease.regex.class0"))) {
+      class0 = line.replaceAll(cfg.getEnv().getProperty("disease.pattern.class0"), "");
+
+      LOGGER.info("\n\nCLASS 0: " + line);
+
+    } else if (line != null && line.startsWith(cfg.getEnv().getProperty("disease.regex.class1"))) {
+      class1 = line.replaceAll(cfg.getEnv().getProperty("disease.pattern.class1"), "");
+
+      LOGGER.info("\n\nCLASS 1: " + line);
+
+    } else if (line != null && line.startsWith(cfg.getEnv().getProperty("disease.regex.class2"))) {
+      class2 = line.replaceAll(cfg.getEnv().getProperty("disease.pattern.class2"), "");
+
+      LOGGER.info("\n\nCLASS 2: " + line);
+
+    } else if (line != null && line.startsWith(cfg.getEnv().getProperty("disease.regex.name"))) {
+      name = line.replaceAll(cfg.getEnv().getProperty("disease.pattern.name"), "");
+      String id = UUID.randomUUID().toString();
+      final Disease d = new Disease(id, class0, class1, class2, name, "", TYPE_DISEASE);
+      String dJson = new Gson().toJson(d);
+
+      Map<String, Object> msg = new HashMap<String, Object>();
+      kafkaCommService.send(id, gson.fromJson(dJson, msg.getClass()));
+
+      FileUtils.writeStringToFile(new File(tmpDir + "/diseases.log"), name + "\n", true);
+      LOGGER.info("\n\nDISEASE: " + dJson);
+
+    }
+  }
+
+  /**
+   * Wrangles drugs data
+   * 
+   * @param line
+   * @throws Exception
+   */
+  public void wrangleDrug(final String line) throws Exception {
+    if (line != null && line.trim().startsWith(cfg.getEnv().getProperty("drug.regex.class0"))) {
+      class0 = line.replaceFirst(cfg.getEnv().getProperty("drug.pattern.class0"), "");
+
+      LOGGER.info("\n\nCLASS 0: " + line);
+
+    } else if (line != null && line.startsWith(cfg.getEnv().getProperty("drug.regex.class1"))) {
+      class1 = line.replaceAll(cfg.getEnv().getProperty("drug.pattern.class1"), "");
+
+      LOGGER.info("\n\nCLASS 1: " + line);
+
+    } else if (line != null && line.startsWith(cfg.getEnv().getProperty("drug.regex.class2"))) {
+      class2 = line.replaceAll(cfg.getEnv().getProperty("drug.pattern.class2"), "");
+
+      LOGGER.info("\n\nCLASS 2: " + line);
+
+    } else if (line != null && line.startsWith(cfg.getEnv().getProperty("drug.regex.name"))) {
+      name = line.replaceAll(cfg.getEnv().getProperty("drug.pattern.name"), "");
+      String id = UUID.randomUUID().toString();
+      final DrugClass d = new DrugClass(id, class0, class1, class2, name, "", TOPIC_DRUG);
+      String dJson = new Gson().toJson(d);
+
+      Map<String, Object> msg = new HashMap<String, Object>();
+      kafkaCommService.send(id, gson.fromJson(dJson, msg.getClass()));
+
+      FileUtils.writeStringToFile(new File(tmpDir + "/drugs.log"), name + "\n", true);
+      LOGGER.info("\n\nDRUG: " + dJson);
+
+    }
   }
 }

@@ -14,6 +14,12 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 
+/**
+ * Manages communication to the Kafka server
+ * 
+ * @author nelson.okello
+ * 
+ */
 @Service(value = "kafkaCommService")
 public class KafkaCommService {
 

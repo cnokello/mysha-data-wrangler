@@ -18,6 +18,12 @@ import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.util.FileManager;
 import com.hp.hpl.jena.vocabulary.VCARD;
 
+/**
+ * Parses RDS files
+ * 
+ * @author nelson.okello
+ * 
+ */
 @Service(value = "rdfWrangler")
 public class RDFWrangler {
 

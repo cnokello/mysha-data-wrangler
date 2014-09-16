@@ -2,6 +2,12 @@ package com.mysha.wrangler.pipeline;
 
 import org.apache.camel.builder.RouteBuilder;
 
+/**
+ * Processing pipelines definition
+ * 
+ * @author nelson.okello
+ * 
+ */
 public class FileProcessingPipeline extends RouteBuilder {
 
   @Override
