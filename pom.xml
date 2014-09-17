@@ -29,9 +29,22 @@
         <kafka.version>0.8.1.1</kafka.version>
         <scala.binary.version>2.10</scala.binary.version>
         <jena.version>2.12.0</jena.version>
+        <tika.version>1.6</tika.version>
 	</properties>
 
 	<dependencies>
+  
+        <!-- Tika -->
+        <dependency>
+          <groupId>org.apache.tika</groupId>
+          <artifactId>tika-core</artifactId>
+          <version>${tika.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.tika</groupId>
+          <artifactId>tika-parsers</artifactId>
+          <version>${tika.version}</version>
+        </dependency>
 	
         <dependency>
           <groupId>org.apache.jena</groupId>

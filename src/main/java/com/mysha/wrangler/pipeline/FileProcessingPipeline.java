@@ -30,6 +30,10 @@ public class FileProcessingPipeline extends RouteBuilder {
         .onException(Exception.class).handled(true).to("bean:pipelineExceptionHandler").end()
         .convertBodyTo(byte[].class, "utf-8").split().tokenize("\n", 1).streaming()
         .convertBodyTo(String.class).to("bean:treeFileWrangler");
+
+    // Web crawling pipeline
+    from("timer://webController?period=5000&fixedRate=true&repeatCount=1").to(
+        "bean:webDownloadController");
   }
 
 }
