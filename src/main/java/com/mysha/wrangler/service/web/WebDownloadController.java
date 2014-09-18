@@ -14,6 +14,15 @@ import org.springframework.stereotype.Service;
 
 import com.mysha.wrangler.util.CfgUtil;
 
+/**
+ * This class sets up and commences the crawling process. A crawling for each URL is commenced in a
+ * separate thread.
+ * 
+ * To tell if the crawl process for a URL is complete, the Callable interface is used
+ * 
+ * @author nelson.okello
+ * 
+ */
 @Service(value = "webDownloadController")
 public class WebDownloadController implements Processor {
 
@@ -25,7 +34,7 @@ public class WebDownloadController implements Processor {
   private ExecutorService executor;
 
   public synchronized void process(Exchange exchange) throws Exception {
-    LOGGER.info("Retrieving config parameters");
+    LOGGER.info("Setting up web crawling...");
 
     try {
 

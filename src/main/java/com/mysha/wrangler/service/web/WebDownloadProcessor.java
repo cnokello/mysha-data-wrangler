@@ -22,6 +22,17 @@ import org.apache.tika.sax.LinkContentHandler;
 import org.apache.tika.sax.TeeContentHandler;
 import org.xml.sax.ContentHandler;
 
+/**
+ * This class crawls a URL, retrieves its content and links. For each link retrieved, context and
+ * links are extracted recursively until a specified loop count is reached.
+ * 
+ * To read a file located at a remote URL, this classes utilized java.net.URL and
+ * java.io.InputStream. To write the read file to the local file system, this class makes use of
+ * commons io's FileUtils
+ * 
+ * @author nelson.okello
+ * 
+ */
 public class WebDownloadProcessor implements Callable<Long> {
 
   private static final Logger LOGGER = Logger.getLogger(WebDownloadProcessor.class);
@@ -32,7 +43,7 @@ public class WebDownloadProcessor implements Callable<Long> {
 
   private int depth;
 
-  private volatile ContentHandler textHandler = new BodyContentHandler();
+  private volatile ContentHandler textHandler = new BodyContentHandler(-1);
 
   private volatile LinkContentHandler linkHandler = new LinkContentHandler();
 
@@ -50,10 +61,13 @@ public class WebDownloadProcessor implements Callable<Long> {
     this.depth = depth;
   }
 
+  /**
+   * Entry point into this processor
+   */
   public Long call() throws Exception {
     LOGGER.info("Starting to download: " + baseUrl);
     try {
-      textHandler = new BodyContentHandler();
+      textHandler = new BodyContentHandler(-1);
       linkHandler = new LinkContentHandler();
 
       TeeContentHandler teeHandler = new TeeContentHandler(linkHandler, textHandler);
@@ -71,7 +85,7 @@ public class WebDownloadProcessor implements Callable<Long> {
       for (Link link : links) {
         FileUtils.writeStringToFile(
             new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
-                + fileName + ".link.txt"), link.getText() + " : " + link.getUri() + "\n", true);
+                + fileName + ".link.txt"), link.getText() + "]][[" + link.getUri() + "\n", true);
       }
 
       if (links != null && links.size() > 0) {
@@ -86,15 +100,33 @@ public class WebDownloadProcessor implements Callable<Long> {
     return 1l;
   }
 
-  public synchronized int getPages(final List<Link> links) {
+  /**
+   * A recursive method that retrieves the pages and links until a specified depth is reached
+   * 
+   * @param links
+   * @return
+   */
+  public synchronized int getPages(final List<Link> __links) {
+    final Link[] links = __links.toArray(new Link[__links.size()]);
+
     if (depthCount > 3)
       return 1;
 
     Set<Link> newLinks = new HashSet<Link>();
-    for (Link link : links) {
+    for (final Link link : links) {
       try {
         TeeContentHandler teeHandler = new TeeContentHandler(linkHandler, textHandler);
-        URL url = new URL(link.getUri());
+        String urlPrefix = baseUrl.replaceAll("/$", "");
+        String uri = link.getUri();
+
+        String urlToRetrieve = urlPrefix + link.getUri();
+        if (uri.startsWith("http")) {
+          urlToRetrieve = uri;
+        }
+
+        LOGGER.info("Retrieving URL... " + urlToRetrieve);
+
+        URL url = new URL(urlToRetrieve);
 
         InputStream is = url.openStream();
         parser.parse(is, teeHandler, metadata, parseContext);
@@ -104,12 +136,15 @@ public class WebDownloadProcessor implements Callable<Long> {
             new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
                 + fileName + ".txt"), textHandler.toString(), true);
 
+        LOGGER.info("Retrieved URL: " + urlToRetrieve);
         List<Link> _links = linkHandler.getLinks();
         for (Link _link : links) {
           newLinks.add(_link);
-          FileUtils.writeStringToFile(
-              new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
-                  + fileName + ".link.txt"), _link.getText() + " : " + _link.getUri() + "\n", true);
+          FileUtils
+              .writeStringToFile(
+                  new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
+                      + fileName + ".link.txt"), _link.getText() + "]][[" + _link.getUri() + "\n",
+                  true);
         }
 
       } catch (Exception e) {
