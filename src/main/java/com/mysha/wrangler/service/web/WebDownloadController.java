@@ -45,7 +45,7 @@ public class WebDownloadController implements Processor {
       List<String> urlsToCrawl = Arrays.asList(cfg.getEnv().getProperty("web.crawl.urls")
           .split(","));
       for (String url : urlsToCrawl) {
-        executor.submit(new WebDownloadProcessor(url, baseDir, crawlDepth));
+        executor.submit(new WebDownloadProcessor(url, baseDir, crawlDepth, cfg));
 
         LOGGER.info("URL: " + url);
       }

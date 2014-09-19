@@ -22,6 +22,8 @@ import org.apache.tika.sax.LinkContentHandler;
 import org.apache.tika.sax.TeeContentHandler;
 import org.xml.sax.ContentHandler;
 
+import com.mysha.wrangler.util.CfgUtil;
+
 /**
  * This class crawls a URL, retrieves its content and links. For each link retrieved, context and
  * links are extracted recursively until a specified loop count is reached.
@@ -55,10 +57,15 @@ public class WebDownloadProcessor implements Callable<Long> {
 
   private volatile int depthCount = 0;
 
-  public WebDownloadProcessor(String baseUrl, String baseDir, int depth) {
+  private CfgUtil cfg;
+
+  private final String paginatedPrefix = "currpage";
+
+  public WebDownloadProcessor(String baseUrl, String baseDir, int depth, CfgUtil cfg) {
     this.baseUrl = baseUrl;
     this.baseDir = baseDir;
     this.depth = depth;
+    this.cfg = cfg;
   }
 
   /**
@@ -67,29 +74,45 @@ public class WebDownloadProcessor implements Callable<Long> {
   public Long call() throws Exception {
     LOGGER.info("Starting to download: " + baseUrl);
     try {
-      textHandler = new BodyContentHandler(-1);
-      linkHandler = new LinkContentHandler();
 
-      TeeContentHandler teeHandler = new TeeContentHandler(linkHandler, textHandler);
+      if (baseUrl != null
+          && baseUrl.trim().equals(cfg.getEnv().getProperty("url.health.doctors.local").trim())) {
+        getFromPaginated(baseUrl, paginatedPrefix, 1, 194);
 
-      URL url = new URL(baseUrl);
-      InputStream is = url.openStream();
-      parser.parse(is, teeHandler, metadata, parseContext);
+      } else if (baseUrl != null
+          && baseUrl.trim().equals(cfg.getEnv().getProperty("url.health.doctors.foreign").trim())) {
+        getFromPaginated(baseUrl, paginatedPrefix, 1, 57);
 
-      String fileName = UUID.randomUUID().toString();
-      FileUtils.writeStringToFile(
-          new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/" + fileName
-              + ".txt"), textHandler.toString(), true);
+      } else if (baseUrl != null
+          && baseUrl.trim().equals(cfg.getEnv().getProperty("url.health.facilities").trim())) {
+        getFromPaginated(baseUrl, paginatedPrefix, 1, 80);
 
-      List<Link> links = linkHandler.getLinks();
-      for (Link link : links) {
+      } else {
+
+        textHandler = new BodyContentHandler(-1);
+        linkHandler = new LinkContentHandler();
+
+        TeeContentHandler teeHandler = new TeeContentHandler(linkHandler, textHandler);
+
+        URL url = new URL(baseUrl);
+        InputStream is = url.openStream();
+        parser.parse(is, teeHandler, metadata, parseContext);
+
+        String fileName = UUID.randomUUID().toString();
         FileUtils.writeStringToFile(
             new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
-                + fileName + ".link.txt"), link.getText() + "]][[" + link.getUri() + "\n", true);
-      }
+                + fileName + ".txt"), textHandler.toString(), true);
 
-      if (links != null && links.size() > 0) {
-        getPages(links);
+        List<Link> links = linkHandler.getLinks();
+        for (Link link : links) {
+          FileUtils.writeStringToFile(
+              new File(baseDir + "/" + baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
+                  + fileName + ".link.txt"), link.getText() + "]][[" + link.getUri() + "\n", true);
+        }
+
+        if (links != null && links.size() > 0) {
+          getPages(links);
+        }
       }
 
     } catch (Exception e) {
@@ -115,6 +138,10 @@ public class WebDownloadProcessor implements Callable<Long> {
     Set<Link> newLinks = new HashSet<Link>();
     for (final Link link : links) {
       try {
+
+        textHandler = new BodyContentHandler(-1);
+        linkHandler = new LinkContentHandler();
+
         TeeContentHandler teeHandler = new TeeContentHandler(linkHandler, textHandler);
         String urlPrefix = baseUrl.replaceAll("/$", "");
         String uri = link.getUri();
@@ -138,7 +165,7 @@ public class WebDownloadProcessor implements Callable<Long> {
 
         LOGGER.info("Retrieved URL: " + urlToRetrieve);
         List<Link> _links = linkHandler.getLinks();
-        for (Link _link : links) {
+        for (Link _link : _links) {
           newLinks.add(_link);
           FileUtils
               .writeStringToFile(
@@ -150,12 +177,61 @@ public class WebDownloadProcessor implements Callable<Long> {
       } catch (Exception e) {
         LOGGER.error(String.format("Message: %s\nTrace: %s\n\n", e.getMessage(),
             ExceptionUtils.getStackTrace(e)));
+
+        depthCount++;
       }
 
     }
 
     depthCount++;
     getPages(new ArrayList<Link>(newLinks));
+
+    return 0;
+  }
+
+  /**
+   * Retrieves specified pages from a paginated site
+   * 
+   * @param baseUrl
+   * @param pageKey
+   * @param from
+   * @param to
+   * @return
+   */
+  public synchronized int getFromPaginated(final String _baseUrl, final String pageKey,
+      final int from, final int to) {
+
+    String fileName = UUID.randomUUID().toString();
+    for (int i = from; i <= to; i++) {
+      try {
+        final String _url = _baseUrl + "?" + pageKey + "=" + i;
+        URL url = new URL(_url);
+        LOGGER.info("]]]]]]]" + _url);
+
+        textHandler = new BodyContentHandler(-1);
+        linkHandler = new LinkContentHandler();
+
+        TeeContentHandler teeHandler = new TeeContentHandler(linkHandler, textHandler);
+        InputStream is = url.openStream();
+        parser.parse(is, teeHandler, metadata, parseContext);
+
+        FileUtils.writeStringToFile(
+            new File(baseDir + "/" + _baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
+                + fileName + "." + i + ".txt"), textHandler.toString(), true);
+
+        List<Link> _links = linkHandler.getLinks();
+        for (Link _link : _links) {
+          FileUtils.writeStringToFile(
+              new File(baseDir + "/" + _baseUrl.trim().replaceAll("[^a-zA-Z0-9]+", ".") + "/"
+                  + fileName + "." + i + ".link.txt"), _link.getText() + "]][[" + _link.getUri()
+                  + "\n", true);
+        }
+
+      } catch (Exception e) {
+        LOGGER.error(String.format("Message: %s\nTrace: %s\n\n", e.getMessage(),
+            ExceptionUtils.getStackTrace(e)));
+      }
+    }
 
     return 0;
   }
