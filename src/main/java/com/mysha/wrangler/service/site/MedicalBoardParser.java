@@ -1,10 +1,8 @@
 package com.mysha.wrangler.service.site;
 
-import java.io.File;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.mysha.wrangler.model.HealthFacility;
 import com.mysha.wrangler.model.HealthProfessional;
+import com.mysha.wrangler.service.KafkaCommService;
 import com.mysha.wrangler.util.CfgUtil;
 
 /**
@@ -30,11 +29,13 @@ public class MedicalBoardParser {
   private @Autowired
   CfgUtil cfg;
 
+  private @Autowired
+  KafkaCommService kafkaCommService;
+
   private boolean shouldParse = false;
 
   public synchronized void parse(final String fileType, final String msg) throws Exception {
-    FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/" + fileType
-        + ".log"), msg + "\n", true);
+    LOGGER.info(msg);
 
     try {
       // Retrieve demarcation patterns
@@ -47,15 +48,13 @@ public class MedicalBoardParser {
 
       // Determine if its the beginning or the end of parsing
       if (msg.trim().toUpperCase().matches(patternBegin)) {
-        FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-            + fileType + ".log"), "BEGIN: " + msg + "\n", true);
+        LOGGER.info("BEGIN: " + msg);
 
         shouldParse = true;
         return;
 
       } else if (msg.trim().toUpperCase().matches(patternEnd)) {
-        FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-            + fileType + ".log"), "END: " + msg + "\n", true);
+        LOGGER.info("END: " + msg);
 
         shouldParse = false;
         return;
@@ -65,14 +64,12 @@ public class MedicalBoardParser {
       // Parse the text
       if (shouldParse == true) {
         if (msg.trim().toUpperCase().matches(patternExclude)) {
-          FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-              + fileType + ".log"), "EXCLUDE: " + msg + "\n", true);
+          LOGGER.info("EXCLUDE: " + msg);
         }
 
         if (msg != null && msg.trim().length() > 0
             && !msg.trim().toUpperCase().matches(patternExclude)) {
-          FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-              + fileType + ".log"), "RECORD: " + msg + "\n", true);
+          LOGGER.info("RECORD: " + msg);
 
           String[] doctorDtl = pattern.split(msg);
           HealthProfessional hp = new HealthProfessional();
@@ -82,22 +79,19 @@ public class MedicalBoardParser {
             hp = new HealthProfessional(UUID.randomUUID().toString(), doctorDtl[0], doctorDtl[4],
                 doctorDtl[5], doctorDtl[6], doctorDtl[3], "DOCTOR", fileType);
 
-            FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-                + fileType + ".log"), "OBJECT: " + hp.toString() + "\n", true);
+            LOGGER.info("OBJECT: " + hp.toString());
 
           } else if (fileType.equals("foreign.doctor")) {
             hp = new HealthProfessional(UUID.randomUUID().toString(), doctorDtl[0], doctorDtl[3],
                 doctorDtl[5], "", doctorDtl[2], "DOCTOR", fileType);
 
-            FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-                + fileType + ".log"), "OBJECT: " + hp.toString() + "\n", true);
+            LOGGER.info("OBJECT: " + hp.toString());
 
           } else if (fileType.equals("facility")) {
             hf = new HealthFacility(UUID.randomUUID().toString(), doctorDtl[0], doctorDtl[1],
                 doctorDtl[2], doctorDtl[3], doctorDtl[4], "HEALTH_FACILITY");
 
-            FileUtils.writeStringToFile(new File(cfg.getEnv().getProperty("tmp.basedir") + "/"
-                + fileType + ".log"), "OBJECT: " + hf.toString() + "\n", true);
+            LOGGER.info("OBJECT: " + hf.toString());
 
           }
 
