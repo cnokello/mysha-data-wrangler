@@ -65,6 +65,7 @@ public class MedicalBoardParser {
       if (shouldParse == true) {
         if (msg.trim().toUpperCase().matches(patternExclude)) {
           LOGGER.info("EXCLUDE: " + msg);
+
         }
 
         if (msg != null && msg.trim().length() > 0

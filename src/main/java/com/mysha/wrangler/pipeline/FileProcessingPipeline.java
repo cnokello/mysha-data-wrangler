@@ -36,7 +36,7 @@ public class FileProcessingPipeline extends RouteBuilder {
         "bean:webDownloadController");
 
     // Crawled content parsing pipeline
-    from("file:{{files.basedir.crawled}}?preMove=inprogress&move=.processed")
+    from("file:{{files.basedir.crawled}}?recursive=true&preMove=inprogress&move=.processed")
         .convertBodyTo(byte[].class, "utf-8").split().tokenize("\n", 1).streaming()
         .convertBodyTo(String.class).to("bean:crawledContentParser");
 
