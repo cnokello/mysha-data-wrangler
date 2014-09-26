@@ -1,10 +1,10 @@
 package com.mysha.wrangler.service.site;
 
-import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import com.google.gson.Gson;
 import com.mysha.wrangler.model.ArticleLink;
+import com.mysha.wrangler.service.KafkaCommService;
 import com.mysha.wrangler.util.CfgUtil;
 
 /**
@@ -35,7 +36,12 @@ public class CrawledContentLinkParser {
   private @Autowired
   CfgUtil cfg;
 
+  private @Autowired
+  KafkaCommService kafkaCommService;
+
   private Gson gson = new Gson();
+
+  private Map<String, Object> map = new HashMap<String, Object>();
 
   private Pattern linkPattern = Pattern.compile("]]\\[\\[");
 
@@ -70,13 +76,15 @@ public class CrawledContentLinkParser {
       }
 
       if (getWordCount(title) > titleMinWords) {
-        ArticleLink article = new ArticleLink(UUID.randomUUID().toString(), title, uri, source);
+        ArticleLink article = new ArticleLink(UUID.randomUUID().toString(), title, uri, source,
+            "ARTICLE_LINK");
         String articleJson = gson.toJson(article);
+        LOGGER.info("]]O]K]E]L]L]O]] Publishing to Kafka...: " + articleJson + "\n\n");
 
-        LOGGER.info("]]O]K]E]L]L]O]] Parsed link... " + articleJson + "\n\n");
-        FileUtils.writeStringToFile(
-            new File(cfg.getEnv().getProperty("tmp.basedir") + "/link.log"), articleJson + "\n",
-            true);
+        map = gson.fromJson(articleJson, map.getClass());
+        kafkaCommService.send(article.getId(), map);
+
+        LOGGER.info("]]O]K]E]L]L]O]] Published to Kafka: " + articleJson + "\n\n");
 
       }
     }

@@ -22,6 +22,8 @@ public class HealthProfessional implements Serializable {
 
   private String localForeign;
 
+  private String type;
+
   public HealthProfessional() {
   }
 
@@ -36,6 +38,7 @@ public class HealthProfessional implements Serializable {
     this.address = address;
     this.profession = profession;
     this.localForeign = localForeign;
+    this.type = profession.toUpperCase();
   }
 
   @Override
@@ -91,5 +94,29 @@ public class HealthProfessional implements Serializable {
 
   public void setAddress(String address) {
     this.address = address;
+  }
+
+  public String getProfession() {
+    return profession;
+  }
+
+  public void setProfession(String profession) {
+    this.profession = profession;
+  }
+
+  public String getLocalForeign() {
+    return localForeign;
+  }
+
+  public void setLocalForeign(String localForeign) {
+    this.localForeign = localForeign;
+  }
+
+  public String getType() {
+    return type;
+  }
+
+  public void setType(String type) {
+    this.type = type;
   }
 }

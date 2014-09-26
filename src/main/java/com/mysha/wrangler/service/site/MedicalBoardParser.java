@@ -1,5 +1,7 @@
 package com.mysha.wrangler.service.site;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -8,6 +10,7 @@ import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.google.gson.Gson;
 import com.mysha.wrangler.model.HealthFacility;
 import com.mysha.wrangler.model.HealthProfessional;
 import com.mysha.wrangler.service.KafkaCommService;
@@ -31,6 +34,10 @@ public class MedicalBoardParser {
 
   private @Autowired
   KafkaCommService kafkaCommService;
+
+  private Gson gson = new Gson();
+
+  private Map<String, Object> map = new HashMap<String, Object>();
 
   private boolean shouldParse = false;
 
@@ -80,19 +87,37 @@ public class MedicalBoardParser {
             hp = new HealthProfessional(UUID.randomUUID().toString(), doctorDtl[0], doctorDtl[4],
                 doctorDtl[5], doctorDtl[6], doctorDtl[3], "DOCTOR", fileType);
 
-            LOGGER.info("OBJECT: " + hp.toString());
+            String hpJson = gson.toJson(hp);
+            LOGGER.info("Publishing to Kafka: " + hpJson);
+
+            map = gson.fromJson(hpJson, map.getClass());
+            kafkaCommService.send(hp.getId(), map);
+
+            LOGGER.info("Published to Kafaka...: " + hpJson);
 
           } else if (fileType.equals("foreign.doctor")) {
             hp = new HealthProfessional(UUID.randomUUID().toString(), doctorDtl[0], doctorDtl[3],
                 doctorDtl[5], "", doctorDtl[2], "DOCTOR", fileType);
 
-            LOGGER.info("OBJECT: " + hp.toString());
+            String hpJson = gson.toJson(hp);
+            LOGGER.info("Publishing to Kafka...: " + hpJson);
+
+            map = gson.fromJson(hpJson, map.getClass());
+            kafkaCommService.send(hp.getId(), map);
+
+            LOGGER.info("Pubslished to Kafka: " + hpJson);
 
           } else if (fileType.equals("facility")) {
             hf = new HealthFacility(UUID.randomUUID().toString(), doctorDtl[0], doctorDtl[1],
                 doctorDtl[2], doctorDtl[3], doctorDtl[4], "HEALTH_FACILITY");
 
-            LOGGER.info("OBJECT: " + hf.toString());
+            String hfJson = gson.toJson(hf);
+            LOGGER.info("Publishingto Kafka...: " + hfJson);
+
+            map = gson.fromJson(hfJson, map.getClass());
+            kafkaCommService.send(hf.getId(), map);
+
+            LOGGER.info("Published to Kafka: " + hfJson);
 
           }
 
